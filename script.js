@@ -1,237 +1,335 @@
-var greeting = document.getElementById("greeting");
-var doneText = document.getElementById("done");
-var totalText = document.getElementById("total");
-var habitList = document.getElementById("habitList");
-var nameInput = document.getElementById("nameInput");
-var descInput = document.getElementById("descInput");
-var errorText = document.getElementById("error");
-var addBtn = document.getElementById("addBtn");
-var tableHead = document.getElementById("tableHead");
-var tableBody = document.getElementById("tableBody");
-
+var KEY = 'simple_habit_tracker_habits';
 var habits = [];
 
-function dateToText(d) {
-  var month = d.getMonth() + 1;
-  var day = d.getDate();
-  if (month < 10) month = "0" + month;
-  if (day < 10) day = "0" + day;
-  return d.getFullYear() + "-" + month + "-" + day;
+var greetingText = document.getElementById('greetingText');
+var completedCount = document.getElementById('completedCount');
+var totalCount = document.getElementById('totalCount');
+var habitList = document.getElementById('habitList');
+var newHabitForm = document.getElementById('newHabitForm');
+var titleInput = document.getElementById('habitTitleInput');
+var descInput = document.getElementById('habitDescInput');
+var nameError = document.getElementById('nameErrorMsg');
+var tableHeaderRow = document.getElementById('tableHeaderRow');
+var tableBody = document.getElementById('tableBody');
+
+var dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+var monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function makeKey(date) {
+  var month = date.getMonth() + 1;
+  var day = date.getDate();
+  if (month < 10) month = '0' + month;
+  if (day < 10) day = '0' + day;
+  return date.getFullYear() + '-' + month + '-' + day;
 }
 
-function today() {
-  return dateToText(new Date());
+function todayKey() {
+  return makeKey(new Date());
 }
 
-function saveHabits() {
-  localStorage.setItem("habits", JSON.stringify(habits));
-}
-
-function loadHabits() {
-  var saved = localStorage.getItem("habits");
-  if (saved) {
-    habits = JSON.parse(saved);
-  }
-}
-
-function showGreeting() {
-  var hour = new Date().getHours();
-  if (hour < 12) {
-    greeting.textContent = "Good morning!";
-  } else if (hour < 18) {
-    greeting.textContent = "Good afternoon!";
-  } else {
-    greeting.textContent = "Good evening!";
-  }
-}
-
-function showCounter() {
-  var count = 0;
-  for (var i = 0; i < habits.length; i++) {
-    if (habits[i].dates.includes(today())) {
-      count++;
-    }
-  }
-  doneText.textContent = count;
-  totalText.textContent = habits.length;
-}
-
-// tick or untick a habit on a date
-function toggle(index, date) {
-  var dates = habits[index].dates;
-  var pos = dates.indexOf(date);
-  if (pos == -1) {
-    dates.push(date);
-  } else {
-    dates.splice(pos, 1);
-  }
-  saveHabits();
-  showAll();
-}
-
-function removeHabit(index) {
-  if (confirm("Delete " + habits[index].name + "?")) {
-    habits.splice(index, 1);
-    saveHabits();
-    showAll();
-  }
-}
-
-function showHabits() {
-  habitList.innerHTML = "";
-
-  if (habits.length == 0) {
-    habitList.innerHTML = '<div class="empty">No habits yet. Add one below!</div>';
-    return;
-  }
-
-  for (var i = 0; i < habits.length; i++) {
-    var habit = habits[i];
-    var isDone = habit.dates.includes(today());
-
-    var card = document.createElement("div");
-    card.className = "card";
-
-    var box = document.createElement("input");
-    box.type = "checkbox";
-    box.checked = isDone;
-    box.onchange = makeToggle(i, today());
-
-    var info = document.createElement("div");
-    info.className = "info";
-
-    var name = document.createElement("div");
-    name.className = "name";
-    if (isDone) name.className = "name done";
-    name.textContent = habit.name;
-    info.appendChild(name);
-
-    if (habit.desc) {
-      var desc = document.createElement("div");
-      desc.className = "desc";
-      desc.textContent = habit.desc;
-      info.appendChild(desc);
-    }
-
-    var del = document.createElement("button");
-    del.textContent = "Delete";
-    del.onclick = makeDelete(i);
-
-    card.appendChild(box);
-    card.appendChild(info);
-    card.appendChild(del);
-    habitList.appendChild(card);
-  }
-}
-
-function makeToggle(index, date) {
-  return function () {
-    toggle(index, date);
-  };
-}
-
-function makeDelete(index) {
-  return function () {
-    removeHabit(index);
-  };
-}
-
-function showTable() {
-  var dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+function getLast7Days() {
   var days = [];
-
-  // last 7 days, oldest first
   for (var i = 6; i >= 0; i--) {
     var d = new Date();
     d.setDate(d.getDate() - i);
     days.push(d);
   }
+  return days;
+}
 
-  var head = "<th>Habit</th>";
-  for (var i = 0; i < days.length; i++) {
-    var cls = "";
-    var label = dayNames[days[i].getDay()] + " " + days[i].getDate();
-    if (dateToText(days[i]) == today()) {
-      cls = ' class="today"';
-      label += " (today)";
+function saveHabits() {
+  localStorage.setItem(KEY, JSON.stringify(habits));
+}
+
+function loadHabits() {
+  var saved = localStorage.getItem(KEY);
+
+  if (saved) {
+    try {
+      habits = JSON.parse(saved);
+    } catch (e) {
+      habits = [];
     }
-    head += "<th" + cls + ">" + label + "</th>";
+    return;
   }
-  head += "<th>Total</th>";
-  tableHead.innerHTML = head;
 
-  tableBody.innerHTML = "";
+  var yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
 
-  if (habits.length == 0) {
-    tableBody.innerHTML = '<tr><td colspan="9">No habits yet</td></tr>';
+  habits = [
+    {
+      id: 'habit-1',
+      title: 'Daily Exercise',
+      description: '• 20 pushups\n• 30 squats\n• 15 minutes brisk walk',
+      completedDates: [makeKey(yesterday), todayKey()]
+    }
+  ];
+  saveHabits();
+}
+
+function showGreeting() {
+  var hour = new Date().getHours();
+
+  if (hour >= 5 && hour < 12) {
+    greetingText.textContent = 'Good morning!';
+  } else if (hour >= 12 && hour < 18) {
+    greetingText.textContent = 'Good afternoon!';
+  } else {
+    greetingText.textContent = 'Good evening!';
+  }
+}
+
+function showStats() {
+  var today = todayKey();
+  var done = 0;
+
+  for (var i = 0; i < habits.length; i++) {
+    if (habits[i].completedDates.indexOf(today) !== -1) {
+      done++;
+    }
+  }
+
+  completedCount.textContent = done;
+  totalCount.textContent = habits.length;
+}
+
+function showHabits() {
+  var today = todayKey();
+  habitList.innerHTML = '';
+
+  if (habits.length === 0) {
+    habitList.innerHTML =
+      '<div class="empty-message">' +
+      'No habits currently being tracked. Use the "Add a New Habit" box below to add one.' +
+      '</div>';
+    return;
+  }
+
+  for (var i = 0; i < habits.length; i++) {
+    addCard(habits[i], today);
+  }
+}
+
+function addCard(habit, today) {
+  var doneToday = habit.completedDates.indexOf(today) !== -1;
+
+  var card = document.createElement('div');
+  card.className = 'habit-card';
+
+  card.innerHTML =
+    '<div class="habit-checkbox-wrapper">' +
+      '<input type="checkbox" class="habit-checkbox" title="Mark done for today">' +
+    '</div>' +
+    '<div class="habit-details">' +
+      '<div class="habit-title"></div>' +
+    '</div>' +
+    '<div>' +
+      '<button class="btn-delete">Delete</button>' +
+    '</div>';
+
+  var checkbox = card.querySelector('.habit-checkbox');
+  var title = card.querySelector('.habit-title');
+  var details = card.querySelector('.habit-details');
+  var deleteBtn = card.querySelector('.btn-delete');
+
+  checkbox.checked = doneToday;
+  title.textContent = habit.title;
+  if (doneToday) {
+    title.className = 'habit-title checked-text';
+  }
+
+  if (habit.description) {
+    var desc = document.createElement('div');
+    desc.className = 'habit-desc';
+    desc.textContent = habit.description;
+    details.appendChild(desc);
+  }
+
+  checkbox.addEventListener('change', function () {
+    toggleDate(habit.id, today);
+  });
+
+  deleteBtn.addEventListener('click', function () {
+    deleteHabit(habit.id);
+  });
+
+  habitList.appendChild(card);
+}
+
+function showTable() {
+  var days = getLast7Days();
+  var today = todayKey();
+
+  tableHeaderRow.innerHTML = '';
+
+  var habitTh = document.createElement('th');
+  habitTh.className = 'habit-col';
+  habitTh.textContent = 'Habit';
+  tableHeaderRow.appendChild(habitTh);
+
+  for (var i = 0; i < days.length; i++) {
+    var date = days[i];
+    var isToday = makeKey(date) === today;
+
+    var th = document.createElement('th');
+    if (isToday) th.className = 'today-col';
+
+    th.innerHTML =
+      '<div>' + dayNames[date.getDay()] + '</div>' +
+      '<div style="font-size: 11px; font-weight: normal;">' + monthNames[date.getMonth()] + ' ' + date.getDate() + '</div>';
+
+    if (isToday) {
+      th.innerHTML += '<div style="font-size: 10px; font-weight: bold; color: #F4A228;">(Today)</div>';
+    }
+
+    tableHeaderRow.appendChild(th);
+  }
+
+  var totalTh = document.createElement('th');
+  totalTh.textContent = 'Total Ticked';
+  tableHeaderRow.appendChild(totalTh);
+
+  tableBody.innerHTML = '';
+
+  if (habits.length === 0) {
+    tableBody.innerHTML =
+      '<tr><td colspan="9" style="text-align: center; padding: 16px; color: #475569;">' +
+      'No habits to display in consistency log.' +
+      '</td></tr>';
     return;
   }
 
   for (var h = 0; h < habits.length; h++) {
-    var row = document.createElement("tr");
-
-    var nameCell = document.createElement("td");
-    nameCell.className = "left";
-    nameCell.textContent = habits[h].name;
-    row.appendChild(nameCell);
-
-    var total = 0;
-
-    for (var i = 0; i < days.length; i++) {
-      var date = dateToText(days[i]);
-      var cell = document.createElement("td");
-      if (date == today()) cell.className = "today";
-
-      var box = document.createElement("input");
-      box.type = "checkbox";
-      box.checked = habits[h].dates.includes(date);
-      if (box.checked) total++;
-      box.onchange = makeToggle(h, date);
-
-      cell.appendChild(box);
-      row.appendChild(cell);
-    }
-
-    var totalCell = document.createElement("td");
-    totalCell.textContent = total + " / 7";
-    row.appendChild(totalCell);
-
-    tableBody.appendChild(row);
+    addTableRow(habits[h], days, today);
   }
 }
 
-function showAll() {
+function addTableRow(habit, days, today) {
+  var row = document.createElement('tr');
+
+  var nameCell = document.createElement('td');
+  nameCell.className = 'habit-name-cell';
+  nameCell.textContent = habit.title;
+  row.appendChild(nameCell);
+
+  var ticked = 0;
+
+  for (var i = 0; i < days.length; i++) {
+    var key = makeKey(days[i]);
+    var isDone = habit.completedDates.indexOf(key) !== -1;
+    if (isDone) ticked++;
+
+    var cell = document.createElement('td');
+    if (key === today) cell.className = 'today-col';
+
+    var box = document.createElement('input');
+    box.type = 'checkbox';
+    box.className = 'table-checkbox';
+    box.checked = isDone;
+    box.title = 'Toggle ' + habit.title + ' on ' + key;
+    box.addEventListener('change', makeToggleHandler(habit.id, key));
+
+    cell.appendChild(box);
+    row.appendChild(cell);
+  }
+
+  var totalCell = document.createElement('td');
+  totalCell.className = 'total-cell';
+  totalCell.textContent = ticked + ' / 7 days';
+  row.appendChild(totalCell);
+
+  tableBody.appendChild(row);
+}
+
+function makeToggleHandler(id, key) {
+  return function () {
+    toggleDate(id, key);
+  };
+}
+
+function findHabit(id) {
+  for (var i = 0; i < habits.length; i++) {
+    if (habits[i].id === id) return habits[i];
+  }
+  return null;
+}
+
+function toggleDate(id, key) {
+  var habit = findHabit(id);
+  if (!habit) return;
+
+  var pos = habit.completedDates.indexOf(key);
+  if (pos !== -1) {
+    habit.completedDates.splice(pos, 1);
+  } else {
+    habit.completedDates.push(key);
+  }
+
+  saveHabits();
+  showEverything();
+}
+
+function deleteHabit(id) {
+  var habit = findHabit(id);
+  var name = habit ? '"' + habit.title + '"' : 'this habit';
+
+  if (!confirm('Are you sure you want to delete ' + name + '?')) return;
+
+  var kept = [];
+  for (var i = 0; i < habits.length; i++) {
+    if (habits[i].id !== id) kept.push(habits[i]);
+  }
+  habits = kept;
+
+  saveHabits();
+  showEverything();
+}
+
+titleInput.addEventListener('input', function () {
+  if (titleInput.value.trim().length > 0) {
+    nameError.classList.add('hidden');
+    titleInput.classList.remove('input-error');
+  }
+});
+
+newHabitForm.addEventListener('submit', function (event) {
+  event.preventDefault();
+
+  var title = titleInput.value.trim();
+  var description = descInput.value.trim();
+
+  if (title === '') {
+    nameError.classList.remove('hidden');
+    titleInput.classList.add('input-error');
+    titleInput.focus();
+    return;
+  }
+
+  nameError.classList.add('hidden');
+  titleInput.classList.remove('input-error');
+
+  habits.push({
+    id: 'habit-' + Date.now(),
+    title: title,
+    description: description,
+    completedDates: []
+  });
+  saveHabits();
+
+  titleInput.value = '';
+  descInput.value = '';
+
+  showEverything();
+});
+
+function showEverything() {
   showGreeting();
-  showCounter();
+  showStats();
   showHabits();
   showTable();
 }
 
-addBtn.onclick = function () {
-  var name = nameInput.value.trim();
-
-  if (name == "") {
-    errorText.style.display = "block";
-    return;
-  }
-
-  errorText.style.display = "none";
-
-  habits.push({
-    name: name,
-    desc: descInput.value.trim(),
-    dates: []
-  });
-
-  saveHabits();
-  nameInput.value = "";
-  descInput.value = "";
-  showAll();
-};
-
-nameInput.oninput = function () {
-  errorText.style.display = "none";
-};
-
-loadHabits();
-showAll();
+document.addEventListener('DOMContentLoaded', function () {
+  loadHabits();
+  showEverything();
+});
