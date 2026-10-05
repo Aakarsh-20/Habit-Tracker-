@@ -2,93 +2,54 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="Content" content="WebDev Project">
   <title>Habit Tracker</title>
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="calendar.png">
-  <script src="script.js" defer></script>
 </head>
 <body>
 
-  <div class="container">
+  <h1>Habit Tracker</h1>
+  <hr class="line-orange">
 
-    <header class="header">
-      <h1>Habit Tracker</h1>
-    </header>
+  <p id="greeting">Welcome!</p>
 
-    <hr class="partition-bold">
+  <div class="counter-box">
+    <p>Today's habits completed</p>
+    <h2><span id="done">0</span> / <span id="total">0</span></h2>
+  </div>
 
-    <div class="greeting-section">
-      <p id="greetingText" class="greeting-text">Welcome!</p>
-    </div>
+  <hr class="line-light">
 
-    <div class="stats-box">
-      <div class="stats-title">Today's Habits Completed</div>
-      <div class="stats-counter">
-        <span id="completedCount">0</span> / <span id="totalCount">0</span>
-      </div>
-      <div class="stats-note">Habits done today</div>
-    </div>
+  <h2>Habits I'm tracking</h2>
+  <div id="habitList"></div>
 
-    <hr class="partition-light">
+  <hr class="line-light">
 
-    <section class="habits-section">
-      <div class="section-header">
-        <h2>Habits Currently Tracking</h2>
-      </div>
+  <div class="form-box">
+    <h3>Add a new habit</h3>
 
-      <div id="habitList" class="habit-list"></div>
-    </section>
+    <label for="nameInput">Habit name:</label>
+    <input type="text" id="nameInput" placeholder="e.g. Daily Exercise">
+    <p id="error" class="error">Please type a habit name first!</p>
 
-    <hr class="partition-light">
+    <label for="descInput">Description (optional):</label>
+    <textarea id="descInput" rows="4" placeholder="e.g. 20 pushups, 15 min walk, 7:00 AM"></textarea>
 
-    <section class="new-habit-box">
-      <h3>Add a New Habit</h3>
-      
-      <form id="newHabitForm" novalidate>
-        <div class="form-group">
-          <label for="habitTitleInput">Habit Name:</label>
-          <input 
-            type="text" 
-            id="habitTitleInput" 
-            placeholder="e.g. Daily Exercise">
-          
-            <div id="nameErrorMsg" class="error-msg hidden">
-            Error: Habit name cannot be empty. Please enter a habit name.
-          </div>
-        </div>
+    <button id="addBtn">+ Add habit</button>
+  </div>
 
-        <div class="form-group">
-          <label for="habitDescInput">Habit Description (Optional):</label>
-          <textarea 
-            id="habitDescInput" 
-            rows="4"
-            placeholder="Pointers to include:&#10;• Goal: 20 pushups and 15 min walk&#10;• Preferred time: 7:00 AM&#10;• Rule: Stay consistent 5 days a week&#10;• Note: Drink water beforehand"
-          ></textarea>
-        </div>
+  <hr class="line-light">
 
-        <button type="submit" id="addHabitBtn" class="btn btn-primary">+ Add New Habit</button>
-      </form>
-    </section>
+  <h2>Consistency log</h2>
+  <p class="small">Last 7 days</p>
 
-    <hr class="partition-light">
-
-    <section class="consistency-section">
-      <h2>Consistency Log</h2>
-      <p class="section-subtext">Past 7 days record of how many tasks done</p>
-
-      <div class="table-wrapper">
-        <table class="consistency-table">
-          <thead>
-            <tr id="tableHeaderRow">
-            </tr>
-          </thead>
-          <tbody id="tableBody">
-          </tbody>
-        </table>
-      </div>
-    </section>
-
+  <div class="table-box">
+    <table>
+      <thead>
+        <tr id="tableHead"></tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
   </div>
 
   <script src="script.js"></script>
