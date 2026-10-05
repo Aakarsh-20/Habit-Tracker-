@@ -1,185 +1,237 @@
-body {
-  font-family: cursive;
-  background: #0D1B2A;
-  color: white;
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 20px;
+var greeting = document.getElementById("greeting");
+var doneText = document.getElementById("done");
+var totalText = document.getElementById("total");
+var habitList = document.getElementById("habitList");
+var nameInput = document.getElementById("nameInput");
+var descInput = document.getElementById("descInput");
+var errorText = document.getElementById("error");
+var addBtn = document.getElementById("addBtn");
+var tableHead = document.getElementById("tableHead");
+var tableBody = document.getElementById("tableBody");
+
+var habits = [];
+
+function dateToText(d) {
+  var month = d.getMonth() + 1;
+  var day = d.getDate();
+  if (month < 10) month = "0" + month;
+  if (day < 10) day = "0" + day;
+  return d.getFullYear() + "-" + month + "-" + day;
 }
 
-h1 {
-  font-size: 32px;
+function today() {
+  return dateToText(new Date());
 }
 
-.line-orange {
-  border: none;
-  border-top: 2px solid #F4A228;
-  margin: 15px 0;
+function saveHabits() {
+  localStorage.setItem("habits", JSON.stringify(habits));
 }
 
-.line-light {
-  border: none;
-  border-top: 1px solid #555;
-  margin: 25px 0;
+function loadHabits() {
+  var saved = localStorage.getItem("habits");
+  if (saved) {
+    habits = JSON.parse(saved);
+  }
 }
 
-#greeting {
-  color: #F4A228;
-  font-size: 20px;
-  font-weight: bold;
+function showGreeting() {
+  var hour = new Date().getHours();
+  if (hour < 12) {
+    greeting.textContent = "Good morning!";
+  } else if (hour < 18) {
+    greeting.textContent = "Good afternoon!";
+  } else {
+    greeting.textContent = "Good evening!";
+  }
 }
 
-.counter-box {
-  background: white;
-  color: #0D1B2A;
-  border: 2px solid #F4A228;
-  border-radius: 8px;
-  padding: 15px;
-  text-align: center;
-  margin-top: 15px;
+function showCounter() {
+  var count = 0;
+  for (var i = 0; i < habits.length; i++) {
+    if (habits[i].dates.includes(today())) {
+      count++;
+    }
+  }
+  doneText.textContent = count;
+  totalText.textContent = habits.length;
 }
 
-.small {
-  color: #ccc;
-  font-size: 13px;
-  margin-bottom: 10px;
+// tick or untick a habit on a date
+function toggle(index, date) {
+  var dates = habits[index].dates;
+  var pos = dates.indexOf(date);
+  if (pos == -1) {
+    dates.push(date);
+  } else {
+    dates.splice(pos, 1);
+  }
+  saveHabits();
+  showAll();
 }
 
-/* habit cards */
-.card {
-  background: white;
-  color: #0D1B2A;
-  border-radius: 8px;
-  padding: 12px;
-  margin-top: 10px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
+function removeHabit(index) {
+  if (confirm("Delete " + habits[index].name + "?")) {
+    habits.splice(index, 1);
+    saveHabits();
+    showAll();
+  }
 }
 
-.card .info {
-  flex: 1;
+function showHabits() {
+  habitList.innerHTML = "";
+
+  if (habits.length == 0) {
+    habitList.innerHTML = '<div class="empty">No habits yet. Add one below!</div>';
+    return;
+  }
+
+  for (var i = 0; i < habits.length; i++) {
+    var habit = habits[i];
+    var isDone = habit.dates.includes(today());
+
+    var card = document.createElement("div");
+    card.className = "card";
+
+    var box = document.createElement("input");
+    box.type = "checkbox";
+    box.checked = isDone;
+    box.onchange = makeToggle(i, today());
+
+    var info = document.createElement("div");
+    info.className = "info";
+
+    var name = document.createElement("div");
+    name.className = "name";
+    if (isDone) name.className = "name done";
+    name.textContent = habit.name;
+    info.appendChild(name);
+
+    if (habit.desc) {
+      var desc = document.createElement("div");
+      desc.className = "desc";
+      desc.textContent = habit.desc;
+      info.appendChild(desc);
+    }
+
+    var del = document.createElement("button");
+    del.textContent = "Delete";
+    del.onclick = makeDelete(i);
+
+    card.appendChild(box);
+    card.appendChild(info);
+    card.appendChild(del);
+    habitList.appendChild(card);
+  }
 }
 
-.card .name {
-  font-weight: bold;
+function makeToggle(index, date) {
+  return function () {
+    toggle(index, date);
+  };
 }
 
-.card .name.done {
-  text-decoration: line-through;
-  opacity: 0.5;
+function makeDelete(index) {
+  return function () {
+    removeHabit(index);
+  };
 }
 
-.card .desc {
-  font-size: 13px;
-  white-space: pre-line;
+function showTable() {
+  var dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  var days = [];
+
+  // last 7 days, oldest first
+  for (var i = 6; i >= 0; i--) {
+    var d = new Date();
+    d.setDate(d.getDate() - i);
+    days.push(d);
+  }
+
+  var head = "<th>Habit</th>";
+  for (var i = 0; i < days.length; i++) {
+    var cls = "";
+    var label = dayNames[days[i].getDay()] + " " + days[i].getDate();
+    if (dateToText(days[i]) == today()) {
+      cls = ' class="today"';
+      label += " (today)";
+    }
+    head += "<th" + cls + ">" + label + "</th>";
+  }
+  head += "<th>Total</th>";
+  tableHead.innerHTML = head;
+
+  tableBody.innerHTML = "";
+
+  if (habits.length == 0) {
+    tableBody.innerHTML = '<tr><td colspan="9">No habits yet</td></tr>';
+    return;
+  }
+
+  for (var h = 0; h < habits.length; h++) {
+    var row = document.createElement("tr");
+
+    var nameCell = document.createElement("td");
+    nameCell.className = "left";
+    nameCell.textContent = habits[h].name;
+    row.appendChild(nameCell);
+
+    var total = 0;
+
+    for (var i = 0; i < days.length; i++) {
+      var date = dateToText(days[i]);
+      var cell = document.createElement("td");
+      if (date == today()) cell.className = "today";
+
+      var box = document.createElement("input");
+      box.type = "checkbox";
+      box.checked = habits[h].dates.includes(date);
+      if (box.checked) total++;
+      box.onchange = makeToggle(h, date);
+
+      cell.appendChild(box);
+      row.appendChild(cell);
+    }
+
+    var totalCell = document.createElement("td");
+    totalCell.textContent = total + " / 7";
+    row.appendChild(totalCell);
+
+    tableBody.appendChild(row);
+  }
 }
 
-.empty {
-  border: 1px dashed #F4A228;
-  padding: 20px;
-  text-align: center;
-  margin-top: 10px;
+function showAll() {
+  showGreeting();
+  showCounter();
+  showHabits();
+  showTable();
 }
 
-/* form */
-.form-box {
-  background: white;
-  color: #0D1B2A;
-  border: 2px solid #F4A228;
-  border-radius: 8px;
-  padding: 20px;
-}
+addBtn.onclick = function () {
+  var name = nameInput.value.trim();
 
-.form-box label {
-  display: block;
-  font-weight: bold;
-  margin: 12px 0 5px 0;
-}
+  if (name == "") {
+    errorText.style.display = "block";
+    return;
+  }
 
-.form-box input,
-.form-box textarea {
-  width: 100%;
-  padding: 8px;
-  font-family: inherit;
-  border: 1px solid #0D1B2A;
-  border-radius: 5px;
-}
+  errorText.style.display = "none";
 
-.error {
-  background: #0D1B2A;
-  color: #F4A228;
-  padding: 5px 10px;
-  margin-top: 5px;
-  border-radius: 5px;
-  display: none;
-}
+  habits.push({
+    name: name,
+    desc: descInput.value.trim(),
+    dates: []
+  });
 
-button {
-  font-family: inherit;
-  cursor: pointer;
-  border: 2px solid #0D1B2A;
-  border-radius: 5px;
-  background: #F4A228;
-  padding: 8px 16px;
-  font-weight: bold;
-}
+  saveHabits();
+  nameInput.value = "";
+  descInput.value = "";
+  showAll();
+};
 
-button:hover {
-  background: #E08E15;
-}
+nameInput.oninput = function () {
+  errorText.style.display = "none";
+};
 
-#addBtn {
-  margin-top: 15px;
-}
-
-.card button {
-  background: white;
-  font-size: 12px;
-  padding: 4px 8px;
-}
-
-.card button:hover {
-  background: #0D1B2A;
-  color: white;
-}
-
-/* table */
-.table-box {
-  background: white;
-  border-radius: 8px;
-  overflow-x: auto;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  color: #0D1B2A;
-  font-size: 13px;
-}
-
-th, td {
-  border: 1px solid #ccc;
-  padding: 8px;
-  text-align: center;
-}
-
-th {
-  background: #0D1B2A;
-  color: white;
-}
-
-td.left {
-  text-align: left;
-  font-weight: bold;
-}
-
-.today {
-  border-left: 2px solid #F4A228;
-  border-right: 2px solid #F4A228;
-}
-
-input[type="checkbox"] {
-  accent-color: #F4A228;
-  cursor: pointer;
-}
+loadHabits();
+showAll();
